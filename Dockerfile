@@ -1,10 +1,9 @@
+FROM tomcat:10.1-jdk17-temurin
 
-FROM eclipse-temurin:17-jre
+WORKDIR /usr/local/tomcat/webapps/
 
-WORKDIR /app
-
-COPY target/*.jar app.jar
+COPY target/ticket-reservation.war ROOT.war
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["catalina.sh", "run"]
