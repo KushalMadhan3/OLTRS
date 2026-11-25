@@ -1,41 +1,50 @@
-# README
-node {
-    def imageName = "24bd1a665c/oltrs"
+pipeline {
+    agent any
 
-    stage('Checkout') {
-        git branch: 'master',
-            url: 'https://github.com/KushalMadhan3/OLTRS'
+    tools {
+        maven 'MAVEN-HOME'
     }
 
-    stage('Build') {
-        bat 'mvn clean package'
-    }
+    stages {
 
-    stage('Test') {
-        bat 'mvn test'
-    }
+        stage('Build') {
+            steps {
+                bat 'mvn clean package'
+            }
+        }
 
-    stage('Docker Build') {
-        bat "docker build -t ${imageName}:latest ."
-    }
+        stage('Docker Build') {
+            steps {
+                bat 'docker build -t maven-web .'
+            }
+        }
 
-    stage('Docker Push') {
-        withCredentials([
-            usernamePassword(
-                credentialsId: 'dockerhub-creds',
-                usernameVariable: 'DOCKER_USER',
-                passwordVariable: 'DOCKER_PASS'
-            )
-        ]) {
-            bat 'docker login -u %DOCKER_USER% -p %DOCKER_PASS%'
-
-            bat "docker push ${imageName}:latest"
-
-            bat 'docker logout'
+        stage('Deploy') {
+            steps {
+                bat '''
+                    docker stop maven-web 2>nul
+                    docker rm maven-web 2>nul
+                    docker run -d --name maven-web -p 8083:8083 maven-web
+                '''
+            }
         }
     }
 
-    stage('Deploy Complete') {
-        echo 'OLTRS CI/CD Pipeline Completed Successfully'
+    post {
+        success {
+            emailext(
+                subject: "Build SUCCESS: ${env.JOB_NAME}",
+                body: "Your application was deployed successfully.",
+                to: 'kushalmadhan2403@gmail.com'
+            )
+        }
+
+        failure {
+            emailext(
+                subject: "Build FAILURE: ${env.JOB_NAME}",
+                body: "Build failed. Check Jenkins console output.",
+                to: 'kushalmadhan2403@gmail.com'
+            )
+        }
     }
 }
